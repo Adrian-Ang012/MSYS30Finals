@@ -2,11 +2,40 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-  <h3>Inventory List</h3>
-  <a href="{% url 'add_product' %}" class="btn btn-success btn-sm">+ Add Product</a>
+
+    <!-- LEFT SIDE: Page Title -->
+    <h4 class="mb-0">Inventory</h4>
+
+    <!-- RIGHT SIDE: Controls -->
+    <div class="d-flex" style="gap: 10px;">
+
+        <!-- Sort Dropdown -->
+        <form method="GET" class="d-flex" style="gap: 10px;">
+            <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Sort By</option>
+                <option value="sku">SKU</option>
+                <option value="name">Name</option>
+                <option value="category">Category</option>
+                <option value="quantity">Quantity</option>
+                <option value="reorder">Reorder Level</option>
+                <option value="price">Unit Price</option>
+                <option value="supplier">Supplier</option>
+            </select>
+
+            <!-- Search Bar -->
+            <input type="text" name="search_query" class="form-control form-control-sm"
+                   placeholder="Search">
+        </form>
+
+        <!-- Add Product Button -->
+        <a href="{% url 'add_product' %}" class="btn btn-success btn-sm">
+            Add Product
+        </a>
+    </div>
 </div>
 
-<table class="table table-striped table-hover shadow-sm">
+<div class="table-responsive" style="max-height: 700px; overflow-y: auto;">
+  <table class="table table-striped table-hover shadow-sm">
   <thead class="table-dark">
     <tr>
       <th>SKU</th>
@@ -21,7 +50,7 @@
   </thead>
   <tbody>
     {% for p in products %}
-    <tr {% if p.is_low_stock %}class="table-warning"{% endif %}>
+    <tr>
       <td>{{ p.sku }}</td>
       <td>{{ p.name }}</td>
       <td>{{ p.category }}</td>
@@ -39,6 +68,9 @@
     {% endfor %}
   </tbody>
 </table>
+
+</div>
+
 
 
 

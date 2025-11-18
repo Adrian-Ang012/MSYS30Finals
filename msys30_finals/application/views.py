@@ -1,6 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from .models import Product, Supplier, ReorderAlert
+from .algorithms import merge_sort, binary_search
+
+
 
 # DASHBOARD PAGE
 def dashboard(request):
@@ -17,10 +20,50 @@ def dashboard(request):
     return render(request, 'myapp/dashboard.html', context)
 
 
-# INVENTORY LIST PAGE
+
 def inventory_list(request):
-    products = Product.objects.all().order_by('name')  # default sort by name
-    return render(request, 'myapp/inventory_list.html', {'products': products})
+    # get all products
+    product_list = list(Product.objects.all())
+
+    # sort the list using merge sort
+    sort_field = request.GET.get("sort", "name")
+    sorted_products = merge_sort(product_list, sort_field)
+
+    # CREATE THE HASH MAP (SKU -> Product)
+    product_map = {}
+    for product in sorted_products:
+        product_map[product.sku.upper()] = product
+
+    # get search text
+    search_text = request.GET.get("search_query", "").strip().upper()
+
+    # CASE 1: no search
+    if search_text == "":
+        context = {
+            "products": sorted_products,
+            "product_map": product_map  
+        }
+        return render(request, "myapp/inventory_list.html", context)
+    
+    # CASE 2: exact search
+    # First check SKU using hash map (O(1))
+    if search_text in product_map:
+        context = {"products": [product_map[search_text]]}
+        return render(request, "myapp/inventory_list.html", context)
+
+    # If not SKU, try name using binary search (O(log n))
+    search_result = binary_search(sorted_products, search_text)
+
+    if search_result:
+        context = {"products": [search_result]}
+    else:
+        context = {"products": []}
+
+    return render(request, "myapp/inventory_list.html", context)
+
+
+
+
 
 
 # ADD PRODUCT PAGE
@@ -81,8 +124,40 @@ def delete_product(request, pk):
 
 # SUPPLIER LIST PAGE
 def supplier_list(request):
-    suppliers = Supplier.objects.all().order_by('name')
-    return render(request, 'myapp/supplier_list.html', {'suppliers': suppliers})
+
+    supplier_list = list(Supplier.objects.all())
+
+    # sort using the SAME merge_sort as products
+    sort_field = request.GET.get("sort", "name")
+    sorted_suppliers = merge_sort(supplier_list, sort_field)
+
+    # hash map for name → supplier
+    supplier_map = {sup.name.upper(): sup for sup in sorted_suppliers}
+
+    search_text = request.GET.get("search_query", "").strip().upper()
+
+    # no search
+    if search_text == "":
+        return render(request, "myapp/supplier_list.html", {"suppliers": sorted_suppliers})
+
+    # hash map (O(1) name lookup)
+    if search_text in supplier_map:
+        return render(request, "myapp/supplier_list.html", {"suppliers": [supplier_map[search_text]]})
+
+    # fallback: binary search (name only)
+    result = binary_search(sorted_suppliers, search_text)
+
+    if result:
+        final_list = [result]
+    else:
+        final_list = []
+
+    return render(request, "myapp/supplier_list.html", {"suppliers": final_list})
+
+
+
+
+
 
 def add_supplier(request):
     if request.method == 'POST':
