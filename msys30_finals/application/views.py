@@ -130,21 +130,13 @@ def supplier_list(request):
     # sort using the SAME merge_sort as products
     sort_field = request.GET.get("sort", "name")
     sorted_suppliers = merge_sort(supplier_list, sort_field)
-
-    # hash map for name → supplier
-    supplier_map = {sup.name.upper(): sup for sup in sorted_suppliers}
-
     search_text = request.GET.get("search_query", "").strip().upper()
 
     # no search
     if search_text == "":
         return render(request, "myapp/supplier_list.html", {"suppliers": sorted_suppliers})
 
-    # hash map (O(1) name lookup)
-    if search_text in supplier_map:
-        return render(request, "myapp/supplier_list.html", {"suppliers": [supplier_map[search_text]]})
-
-    # fallback: binary search (name only)
+    # binary search
     result = binary_search(sorted_suppliers, search_text)
 
     if result:
