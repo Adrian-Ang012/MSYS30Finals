@@ -1,73 +1,124 @@
 {% extends 'myapp/base.html' %}
 {% block content %}
 
-<div class="container-fluid">
-  <div class="row mb-4">
-    <div class="col-md-3" >
-      <div class="card text-center shadow-sm">
-        <div class="card-body">
-          <h6 class="text-muted">Total Products</h6>
-          <h3>{{ total_products }}</h3>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card text-center shadow-sm">
-        <div class="card-body">
-          <h6 class="text-muted">Low Stock Items</h6>
-          <h3 class="text-danger">{{ low_stock_count }}</h3>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card text-center shadow-sm">
-        <div class="card-body">
-          <h6 class="text-muted">Suppliers</h6>
-          <h3>{{ supplier_count }}</h3>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-3">
-      <div class="card text-center shadow-sm">
-        <div class="card-body">
-          <h6 class="text-muted">Last Updated</h6>
-          <h5>{{ last_update }}</h5>
-        </div>
-      </div>
-    </div>
-  </div>
+<h3 class="mb-4">Dashboard</h3>
 
-  <div class="card shadow-sm">
-    <div class="card-header bg-dark text-white">Low Stock Items</div>
-    <div class="card-body p-0">
-      <table class="table table-striped table-hover mb-0">
-        <thead class="table-dark">
-          <tr>
-            <th>SKU</th>
-            <th>Product</th>
-            <th>Quantity</th>
-            <th>Reorder Level</th>
-            <th>Supplier</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in low_stock_items %}
-          <tr>
-            <td>{{ p.sku }}</td>
-            <td>{{ p.name }}</td>
-            <td>{{ p.quantity }}</td>
-            <td>{{ p.reorder_level }}</td>
-            <td>{{ p.supplier }}</td>
-          </tr>
-          {% empty %}
-          <tr><td colspan="5" class="text-center text-muted py-3">All stock levels are sufficient.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+<!-- SUMMARY CARDS -->
+<div class="row mb-4">
+
+    <div class="col-md-3">
+        <div class="card text-center shadow-sm">
+            <div class="card-body">
+                <h5>Total Products</h5>
+                <h2>{{ total_products }}</h2>
+            </div>
+        </div>
     </div>
-  </div>
+
+    <div class="col-md-3">
+        <div class="card text-center shadow-sm">
+            <div class="card-body">
+                <h5>Low Stock Items</h5>
+                <h2 class="text-danger">{{ low_stock_count }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-center shadow-sm">
+            <div class="card-body">
+                <h5>Suppliers</h5>
+                <h2>{{ supplier_count }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-center shadow-sm">
+            <div class="card-body">
+                <h5>Last Updated</h5>
+                <h5>{{ now|date:"M d, Y" }}</h5>
+            </div>
+        </div>
+    </div>
+
 </div>
 
+<!-- MAIN TABLES ROW -->
+<div class="row">
 
+    <!-- LOW STOCK ITEMS -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-danger text-white">
+                Low Stock Items
+            </div>
+            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>SKU</th>
+                            <th>Name</th>
+                            <th>Qty</th>
+                            <th>Reorder</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in low_stock_items %}
+                        <tr>
+                            <td>{{ p.sku }}</td>
+                            <td>{{ p.name }}</td>
+                            <td class="text-danger fw-bold">{{ p.quantity }}</td>
+                            <td>{{ p.reorder_level }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">
+                                No low stock items.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECENTLY ADDED PRODUCTS -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                Recently Added Products
+            </div>
+            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>SKU</th>
+                            <th>Name</th>
+                            <th>Category</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in recent_products %}
+                        <tr>
+                            <td>{{ p.sku }}</td>
+                            <td>{{ p.name }}</td>
+                            <td>{{ p.category }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-3">
+                                No recent products.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
 
 {% endblock %}

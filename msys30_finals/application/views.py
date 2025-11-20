@@ -1,23 +1,26 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.utils import timezone
 from .models import Product, Supplier, ReorderAlert
 from .algorithms import merge_sort, binary_search
 
 
-
-# DASHBOARD PAGE
 def dashboard(request):
-    products = Product.objects.all()
-    low_stock_items = [p for p in products if p.is_low_stock()]
+    products = list(Product.objects.all())
 
-    context = {
-        'total_products': products.count(),
-        'low_stock_count': len(low_stock_items),
-        'supplier_count': Supplier.objects.count(),
-        'last_update': timezone.now().strftime("%b %d, %Y"),
-        'low_stock_items': low_stock_items,
-    }
-    return render(request, 'myapp/dashboard.html', context)
+    total_products = len(products)
+    supplier_count = Supplier.objects.count()
+    low_stock_items = [p for p in products if p.quantity <= p.reorder_level]
+    low_stock_count = len(low_stock_items)
+    recent_products = Product.objects.order_by('-id')[:10]
+
+    return render(request, "myapp/dashboard.html", {
+        "total_products": total_products,
+        "supplier_count": supplier_count,
+        "low_stock_items": low_stock_items,
+        "low_stock_count": low_stock_count,
+        "recent_products": recent_products,
+    })
+
+
 
 def edit_supplier(request, pk):
     supplier = get_object_or_404(Supplier, pk=pk)
@@ -41,23 +44,19 @@ def delete_supplier(request, pk):
 
 
 def inventory_list(request):
-    # get all products
     product_list = list(Product.objects.all())
 
-    # SORT DROPDOWN
+
     sort_field = request.GET.get("sort", "name")
     sorted_products = merge_sort(product_list, sort_field)
 
-    # SEARCH DROPDOWN
-    selected_field = request.GET.get("search_field", "name")
 
-    # SEARCH TEXT
+    selected_field = request.GET.get("search_field", "name")
     search_text = request.GET.get("search_query", "").strip()
 
-    # HASH MAP for SKU lookup
     product_map = {p.sku.upper(): p for p in sorted_products}
 
-    # NO SEARCH → show sorted list
+    # if no search, show sorted list
     if search_text == "":
         return render(request, "myapp/inventory_list.html", {
             "products": sorted_products,
@@ -65,7 +64,7 @@ def inventory_list(request):
             "sort_field": sort_field
         })
 
-    # CASE 1: SKU SEARCH (O(1))
+    # if sku was selected, do direct lookup 
     if selected_field == "sku":
         key = search_text.upper()
         found_item = product_map.get(key)
@@ -77,11 +76,9 @@ def inventory_list(request):
             "sort_field": sort_field
         })
 
-    # CASE 2: BINARY SEARCH (name, category, supplier)
-    # SORT BY SEARCH FIELD FIRST
+    # sort field by merge sort 
     sorted_for_search = merge_sort(product_list, selected_field)
-
-    # Lowercase target
+    # Lowercase target, then do binary  
     target = search_text.lower()
     results = binary_search(sorted_for_search, target, selected_field)
 
@@ -92,7 +89,7 @@ def inventory_list(request):
         "sort_field": sort_field
     })
 
-# ADD PRODUCT PAGE
+
 def add_product(request):
     if request.method == 'POST':
         sku = request.POST.get('sku')
@@ -120,7 +117,7 @@ def add_product(request):
     return render(request, 'myapp/add_product.html', {'suppliers': suppliers})
 
 
-# EDIT PRODUCT PAGE
+
 def edit_product(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
@@ -139,7 +136,7 @@ def edit_product(request, pk):
     return render(request, 'myapp/edit_product.html', {'product': product, 'suppliers': suppliers})
 
 
-# DELETE PRODUCT
+
 def delete_product(request, pk):
     product = get_object_or_404(Product, pk=pk)
     if request.method == 'POST':
@@ -162,7 +159,7 @@ def supplier_list(request):
     # SEARCH TEXT
     search_text = request.GET.get("search_query", "").strip()
 
-    # NO SEARCH → show sorted list
+    # if no search, show sorted list 
     if search_text == "":
         return render(request, "myapp/supplier_list.html", {
             "suppliers": sorted_products,
@@ -170,11 +167,8 @@ def supplier_list(request):
             "sort_field": sort_field
         })
     
-    #BINARY SEARCH (name, category, supplier)
-    # SORT BY SEARCH FIELD FIRST
+    # do merge sort first then do binary search
     sorted_for_search = merge_sort(supplier_list, selected_field)
-
-    # Lowercase target
     target = search_text.lower()
     results = binary_search(sorted_for_search, target, selected_field)
 
@@ -184,8 +178,6 @@ def supplier_list(request):
         "selected_field": selected_field,
         "sort_field": sort_field
     })
-
-
 
 
 def add_supplier(request):
@@ -207,7 +199,7 @@ def add_supplier(request):
 
     return render(request, 'myapp/add_supplier.html')
 
-# REORDER SUGGESTIONS PAGE
+
 def reorder_suggestions(request):
     products = Product.objects.all()
     reorder_items = [p for p in products if p.is_low_stock()]
