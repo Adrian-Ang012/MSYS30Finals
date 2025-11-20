@@ -19,52 +19,78 @@ def dashboard(request):
     }
     return render(request, 'myapp/dashboard.html', context)
 
+def edit_supplier(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+    if request.method == "POST":
+        supplier.name = request.POST.get("name")
+        supplier.contact_person = request.POST.get("contact_person")
+        supplier.phone = request.POST.get("phone")
+        supplier.email = request.POST.get("email")
+        supplier.address = request.POST.get("address")
+        supplier.save()
+        return redirect('supplier_list')
+    return render(request, "myapp/edit_supplier.html", {"supplier": supplier})
+
+
+def delete_supplier(request, pk):
+    supplier = get_object_or_404(Supplier, pk=pk)
+    if request.method == "POST":
+        supplier.delete()
+        return redirect('supplier_list')
+    return render(request, "myapp/delete_supplier.html", {"supplier": supplier})
 
 
 def inventory_list(request):
     # get all products
     product_list = list(Product.objects.all())
 
-    # sort the list using merge sort
+    # SORT DROPDOWN
     sort_field = request.GET.get("sort", "name")
     sorted_products = merge_sort(product_list, sort_field)
 
-    # CREATE THE HASH MAP (SKU -> Product)
-    product_map = {}
-    for product in sorted_products:
-        product_map[product.sku.upper()] = product
+    # SEARCH DROPDOWN
+    selected_field = request.GET.get("search_field", "name")
 
-    # get search text
-    search_text = request.GET.get("search_query", "").strip().upper()
+    # SEARCH TEXT
+    search_text = request.GET.get("search_query", "").strip()
 
-    # CASE 1: no search
+    # HASH MAP for SKU lookup
+    product_map = {p.sku.upper(): p for p in sorted_products}
+
+    # NO SEARCH → show sorted list
     if search_text == "":
-        context = {
+        return render(request, "myapp/inventory_list.html", {
             "products": sorted_products,
-            "product_map": product_map  
-        }
-        return render(request, "myapp/inventory_list.html", context)
-    
-    # CASE 2: exact search
-    # First check SKU using hash map (O(1))
-    if search_text in product_map:
-        context = {"products": [product_map[search_text]]}
-        return render(request, "myapp/inventory_list.html", context)
+            "selected_field": selected_field,
+            "sort_field": sort_field
+        })
 
-    # If not SKU, try name using binary search (O(log n))
-    search_result = binary_search(sorted_products, search_text)
+    # CASE 1: SKU SEARCH (O(1))
+    if selected_field == "sku":
+        key = search_text.upper()
+        found_item = product_map.get(key)
+        results = [found_item] if found_item else []
 
-    if search_result:
-        context = {"products": [search_result]}
-    else:
-        context = {"products": []}
+        return render(request, "myapp/inventory_list.html", {
+            "products": results,
+            "selected_field": selected_field,
+            "sort_field": sort_field
+        })
 
-    return render(request, "myapp/inventory_list.html", context)
+    # CASE 2: BINARY SEARCH (name, category, supplier)
+    # SORT BY SEARCH FIELD FIRST
+    sorted_for_search = merge_sort(product_list, selected_field)
+
+    # Lowercase target
+    target = search_text.lower()
+    results = binary_search(sorted_for_search, target, selected_field)
 
 
-
-
-
+    return render(request, "myapp/inventory_list.html", {
+        "products": results,
+        "selected_field": selected_field,
+        "sort_field": sort_field
+    })
 
 # ADD PRODUCT PAGE
 def add_product(request):
@@ -122,31 +148,42 @@ def delete_product(request, pk):
     return render(request, 'myapp/delete_product.html', {'product': product})
 
 
-# SUPPLIER LIST PAGE
+
 def supplier_list(request):
-
+    # get all products
     supplier_list = list(Supplier.objects.all())
-
-    # sort using the SAME merge_sort as products
+    # SORT DROPDOWN
     sort_field = request.GET.get("sort", "name")
-    sorted_suppliers = merge_sort(supplier_list, sort_field)
-    search_text = request.GET.get("search_query", "").strip().upper()
+    sorted_products = merge_sort(supplier_list, sort_field)
 
-    # no search
+    # SEARCH DROPDOWN
+    selected_field = request.GET.get("search_field", "name")
+
+    # SEARCH TEXT
+    search_text = request.GET.get("search_query", "").strip()
+
+    # NO SEARCH → show sorted list
     if search_text == "":
-        return render(request, "myapp/supplier_list.html", {"suppliers": sorted_suppliers})
+        return render(request, "myapp/supplier_list.html", {
+            "suppliers": sorted_products,
+            "selected_field": selected_field,
+            "sort_field": sort_field
+        })
+    
+    #BINARY SEARCH (name, category, supplier)
+    # SORT BY SEARCH FIELD FIRST
+    sorted_for_search = merge_sort(supplier_list, selected_field)
 
-    # binary search
-    result = binary_search(sorted_suppliers, search_text)
-
-    if result:
-        final_list = [result]
-    else:
-        final_list = []
-
-    return render(request, "myapp/supplier_list.html", {"suppliers": final_list})
+    # Lowercase target
+    target = search_text.lower()
+    results = binary_search(sorted_for_search, target, selected_field)
 
 
+    return render(request, "myapp/supplier_list.html", {
+        "suppliers": results,
+        "selected_field": selected_field,
+        "sort_field": sort_field
+    })
 
 
 

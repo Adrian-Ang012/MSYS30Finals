@@ -11,25 +11,27 @@ def merge_sort(product_list, field):
     return merge_lists(left_half, right_half, field)
 
 
-def get_field_value(product, field):
-    if field == "name":
-        return product.name.lower()
-    if field == "sku":
-        return product.sku.lower()
-    if field == "category":
-        return product.category.lower()
-    if field == "supplier":
-        return product.supplier.name.lower()
-    if field == "quantity":
-        return product.quantity
-    if field == "reorder":
-        return product.reorder_level
-    if field == "price":
-        return product.unit_price
-    if field == 'contact_person':
-        return product.contact_person.lower()
+def get_field_value(obj, field):
+    # Product fields
+
+    field_map = {
+        "sku": lambda o: o.sku.lower(),
+        "name": lambda o: o.name.lower(),
+        "category": lambda o: o.category.lower(),
+        "supplier": lambda o: o.supplier.name.lower(),
+        "quantity": lambda o: o.quantity,
+        "reorder": lambda o: o.reorder_level,
+        "price": lambda o: o.unit_price,
+        "contact_person": lambda o: o.contact_person.lower()
+    }
+
+    # basically If field exists in dictionary, call the stuff
+    if field in field_map:
+        return field_map[field](obj)
 
     return ""
+
+
 
 
 def merge_lists(left_list, right_list, field):
@@ -60,6 +62,44 @@ def merge_lists(left_list, right_list, field):
 
     return merged_list
 
-def binary_search():
-    pass 
-    
+def binary_search(sorted_list, target, field):
+    left = 0
+    right = len(sorted_list) - 1
+    found_index = -1
+
+    # First: standard binary search to find *a* matching index
+    while left <= right:
+        mid = (left + right) // 2
+        mid_value = get_field_value(sorted_list[mid], field)
+
+        if mid_value == target:
+            found_index = mid
+            break
+        elif mid_value < target:
+            left = mid + 1
+        else:
+            right = mid - 1
+
+    # No match
+    if found_index == -1:
+        return []
+
+    # Second: expand left and right to gather all matches
+    results = []
+
+    # go left
+    i = found_index
+    while i >= 0 and get_field_value(sorted_list[i], field) == target:
+        results.append(sorted_list[i])
+        i -= 1
+
+    # go right
+    j = found_index + 1
+    while j < len(sorted_list) and get_field_value(sorted_list[j], field) == target:
+        results.append(sorted_list[j])
+        j += 1
+
+    return results
+
+
+
