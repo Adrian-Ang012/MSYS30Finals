@@ -6,10 +6,6 @@ __pycache__/
 env/
 venv/
 
-# Django
-db.sqlite3
-/staticfiles/
-/media/
 
 # IDE
 .vscode/
