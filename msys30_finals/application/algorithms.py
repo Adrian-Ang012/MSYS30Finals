@@ -103,3 +103,83 @@ def binary_search(sorted_list, target, field):
 
 
 
+def generate_reorder_alerts(product_list: List[Any],
+                            z: float = 1.65,
+                            default_lead_time: float = 7.0) -> List[Tuple[Any, float, float]]:
+    """
+    Generate reorder alerts.
+
+    For each product in product_list, compute a reorder point (ROP) using:
+      safety_stock = z * sigma_demand * sqrt(lead_time)
+      reorder_point = lead_time * avg_daily_demand + safety_stock
+
+    If avg_daily_demand is missing, fall back to comparing quantity <= reorder_level (if present).
+    Returns a list of tuples: (product, reorder_point, days_to_stockout), for products where
+    quantity <= reorder_point or quantity <= reorder_level (fallback).
+    The returned list is sorted by urgency (days_to_stockout ascending).
+
+    Complexity: O(n) to scan n products; sorting the candidate list is O(k log k) where
+    k is number of candidates.
+    """
+    candidates: List[Tuple[Any, float, float]] = []
+
+    def _get_attr_or_key(p, key):
+        # try attribute access first, then dict access
+        if hasattr(p, key):
+            return getattr(p, key)
+        if isinstance(p, dict):
+            return p.get(key)
+        return None
+
+    def _safe_float(x, default=0.0):
+        try:
+            return float(x)
+        except Exception:
+            return default
+
+    for p in product_list:
+        qty = _get_attr_or_key(p, "quantity")
+        qty = _safe_float(qty, 0.0)
+
+        avg = _get_attr_or_key(p, "avg_daily_demand")
+        sigma = _get_attr_or_key(p, "sigma_demand")
+        lead = _get_attr_or_key(p, "lead_time")
+        ro_level = get_field_value(p, "reorder")
+
+        # use default lead time if not provided
+        lead = default_lead_time if lead is None else _safe_float(lead, default_lead_time)
+        sigma_f = 0.0 if sigma is None else _safe_float(sigma, 0.0)
+
+        # if average daily demand missing or zero, fallback to static reorder_level
+        if avg is None or (_safe_float(avg, 0.0) <= 0.0):
+            if ro_level is not None and ro_level != "":
+                try:
+                    ro_val = _safe_float(ro_level)
+                    if qty <= ro_val:
+                        days = float("inf")  # no demand info
+                        candidates.append((p, ro_val, days))
+                except Exception:
+                    # skip malformed values
+                    continue
+            # cannot compute ROP without demand info, skip otherwise
+            continue
+
+        avg_f = _safe_float(avg)
+        # compute safety stock and reorder point
+        safety = z * sigma_f * math.sqrt(max(0.0, lead))
+        rp = lead * avg_f + safety
+
+        # estimate days to stockout (qty / avg)
+        days = float("inf")
+        if avg_f > 0:
+            days = qty / avg_f
+
+        # candidate if current qty <= reorder point
+        if qty <= rp:
+            candidates.append((p, rp, days))
+
+    # sort candidates by urgency (smaller days_to_stockout => more urgent)
+    # treat inf as very large number so they appear at end
+    candidates.sort(key=lambda tup: tup[2] if tup[2] != float("inf") else 1e12)
+
+    return candidates
