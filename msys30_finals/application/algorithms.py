@@ -140,7 +140,6 @@ def generate_reorder_alerts(product_list: List[Any],
     for p in product_list:
         qty = _get_attr_or_key(p, "quantity")
         qty = _safe_float(qty, 0.0)
-
         avg = _get_attr_or_key(p, "avg_daily_demand")
         sigma = _get_attr_or_key(p, "sigma_demand")
         lead = _get_attr_or_key(p, "lead_time")
