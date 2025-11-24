@@ -1,24 +1,36 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Product, Supplier, ReorderAlert
 from .algorithms import merge_sort, binary_search, safety_stock, reorder_point
-
+from django.db.models import Sum
 
 def dashboard(request):
-    products = list(Product.objects.all())
 
-    total_products = len(products)
+    # Summary counts
+    total_products = Product.objects.count()
     supplier_count = Supplier.objects.count()
-    low_stock_items = [p for p in products if p.quantity <= p.reorder_level]
-    low_stock_count = len(low_stock_items)
-    recent_products = Product.objects.order_by('-id')[:10]
+
+    reorder_items = get_reorder_items()
+    reorder_count = len(reorder_items)
+
+    # Top categories by quantity (use ORM aggregation)
+    category_summary = (
+        Product.objects
+        .values("category")
+        .annotate(total_qty=Sum("quantity"))
+        .order_by("-total_qty")
+    )
+
+    # Recently added products
+    recent_products = Product.objects.order_by("-id")[:10]
 
     return render(request, "myapp/dashboard.html", {
         "total_products": total_products,
         "supplier_count": supplier_count,
-        "low_stock_items": low_stock_items,
-        "low_stock_count": low_stock_count,
+        "reorder_count": reorder_count,
+        "category_summary": category_summary,
         "recent_products": recent_products,
     })
+
 
 
 
@@ -199,29 +211,32 @@ def add_supplier(request):
 
     return render(request, 'myapp/add_supplier.html')
 
-
-def reorder_suggestions(request):
+def get_reorder_items():
     products = Product.objects.all()
-
     reorder_items = []
 
+    z = 1.65
+    sigma_demand = 2
+    lead_time = 5
+    avg_daily = 5
+
     for p in products:
-        lead_time = 7
-        avg_daily_demand = max(1, p.quantity // 30)  
-        sigma_demand = avg_daily_demand * 0.25       
-        z = 1.65  # 95 percent service level
-
         ss = safety_stock(z, sigma_demand, lead_time)
-        rp = reorder_point(lead_time, avg_daily_demand, z, sigma_demand)
+        rp = reorder_point(z, sigma_demand, lead_time, avg_daily)
 
-        reorder_items.append({
-            "product": p,
-            "safety_stock": round(ss, 2),
-            "reorder_point": round(rp, 2),
-            "needs_reorder": p.quantity <= rp
-        })
+        if p.quantity <= rp:
+            reorder_items.append({
+                "product": p,
+                "quantity": p.quantity,
+                "safety_stock": round(ss, 2),
+                "reorder_point": round(rp, 2),
+            })
+
+    return reorder_items
+
+def reorder_suggestions(request):
+    reorder_items = get_reorder_items()
 
     return render(request, "myapp/reorder_suggestions.html", {
         "reorder_items": reorder_items
     })
-
