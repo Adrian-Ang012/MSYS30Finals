@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import Product, Supplier, ReorderAlert
-from .algorithms import merge_sort, binary_search
+from .algorithms import merge_sort, binary_search, safety_stock, reorder_point
 
 
 def dashboard(request):
@@ -202,5 +202,26 @@ def add_supplier(request):
 
 def reorder_suggestions(request):
     products = Product.objects.all()
-    reorder_items = [p for p in products if p.is_low_stock()]
-    return render(request, 'myapp/reorder_suggestions.html', {'reorder_items': reorder_items})
+
+    reorder_items = []
+
+    for p in products:
+        lead_time = 7
+        avg_daily_demand = max(1, p.quantity // 30)  
+        sigma_demand = avg_daily_demand * 0.25       
+        z = 1.65  # 95 percent service level
+
+        ss = safety_stock(z, sigma_demand, lead_time)
+        rp = reorder_point(lead_time, avg_daily_demand, z, sigma_demand)
+
+        reorder_items.append({
+            "product": p,
+            "safety_stock": round(ss, 2),
+            "reorder_point": round(rp, 2),
+            "needs_reorder": p.quantity <= rp
+        })
+
+    return render(request, "myapp/reorder_suggestions.html", {
+        "reorder_items": reorder_items
+    })
+

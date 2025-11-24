@@ -1,3 +1,7 @@
+import math
+from typing import Optional
+
+
 def merge_sort(product_list, field):
     # base case
     if len(product_list) <= 1:
