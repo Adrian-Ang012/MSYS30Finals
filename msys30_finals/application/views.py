@@ -4,15 +4,11 @@ from .algorithms import merge_sort, binary_search, safety_stock, reorder_point
 from django.db.models import Sum
 
 def dashboard(request):
-
-    # Summary counts
     total_products = Product.objects.count()
     supplier_count = Supplier.objects.count()
-
     reorder_items = get_reorder_items()
     reorder_count = len(reorder_items)
 
-    # Top categories by quantity (use ORM aggregation)
     category_summary = (
         Product.objects
         .values("category")
@@ -20,7 +16,6 @@ def dashboard(request):
         .order_by("-total_qty")
     )
 
-    # Recently added products
     recent_products = Product.objects.order_by("-id")[:10]
 
     return render(request, "myapp/dashboard.html", {
@@ -30,8 +25,6 @@ def dashboard(request):
         "category_summary": category_summary,
         "recent_products": recent_products,
     })
-
-
 
 
 def edit_supplier(request, pk):
